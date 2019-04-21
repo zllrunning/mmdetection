@@ -6,8 +6,10 @@ from mmcv.cnn import normal_init
 from mmdet.core import delta2bbox
 from mmdet.ops import nms
 from .anchor_head import AnchorHead
+from ..registry import HEADS
 
 
+@HEADS.register_module
 class RPNHead(AnchorHead):
 
     def __init__(self, in_channels, **kwargs):
@@ -32,9 +34,21 @@ class RPNHead(AnchorHead):
         rpn_bbox_pred = self.rpn_reg(x)
         return rpn_cls_score, rpn_bbox_pred
 
-    def loss(self, cls_scores, bbox_preds, gt_bboxes, img_metas, cfg):
-        losses = super(RPNHead, self).loss(cls_scores, bbox_preds, gt_bboxes,
-                                           None, img_metas, cfg)
+    def loss(self,
+             cls_scores,
+             bbox_preds,
+             gt_bboxes,
+             img_metas,
+             cfg,
+             gt_bboxes_ignore=None):
+        losses = super(RPNHead, self).loss(
+            cls_scores,
+            bbox_preds,
+            gt_bboxes,
+            None,
+            img_metas,
+            cfg,
+            gt_bboxes_ignore=gt_bboxes_ignore)
         return dict(
             loss_rpn_cls=losses['loss_cls'], loss_rpn_reg=losses['loss_reg'])
 

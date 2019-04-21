@@ -7,8 +7,10 @@ from mmcv.cnn import xavier_init
 from mmdet.core import (AnchorGenerator, anchor_target, weighted_smoothl1,
                         multi_apply)
 from .anchor_head import AnchorHead
+from ..registry import HEADS
 
 
+@HEADS.register_module
 class SSDHead(AnchorHead):
 
     def __init__(self,
@@ -128,8 +130,14 @@ class SSDHead(AnchorHead):
             avg_factor=num_total_samples)
         return loss_cls[None], loss_reg
 
-    def loss(self, cls_scores, bbox_preds, gt_bboxes, gt_labels, img_metas,
-             cfg):
+    def loss(self,
+             cls_scores,
+             bbox_preds,
+             gt_bboxes,
+             gt_labels,
+             img_metas,
+             cfg,
+             gt_bboxes_ignore=None):
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         assert len(featmap_sizes) == len(self.anchor_generators)
 
@@ -143,8 +151,9 @@ class SSDHead(AnchorHead):
             self.target_means,
             self.target_stds,
             cfg,
+            gt_bboxes_ignore_list=gt_bboxes_ignore,
             gt_labels_list=gt_labels,
-            cls_out_channels=self.cls_out_channels,
+            label_channels=1,
             sampling=False,
             unmap_outputs=False)
         if cls_reg_targets is None:

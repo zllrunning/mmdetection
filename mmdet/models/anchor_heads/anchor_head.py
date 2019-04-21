@@ -3,14 +3,16 @@ from __future__ import division
 import numpy as np
 import torch
 import torch.nn as nn
+from mmcv.cnn import normal_init
 
 from mmdet.core import (AnchorGenerator, anchor_target, delta2bbox,
                         multi_apply, weighted_cross_entropy, weighted_smoothl1,
                         weighted_binary_cross_entropy,
                         weighted_sigmoid_focal_loss, multiclass_nms)
-from ..utils import normal_init
+from ..registry import HEADS
 
 
+@HEADS.register_module
 class AnchorHead(nn.Module):
     """Anchor-based head (RPN, RetinaNet, SSD, etc.).
 
@@ -126,12 +128,8 @@ class AnchorHead(nn.Module):
     def loss_single(self, cls_score, bbox_pred, labels, label_weights,
                     bbox_targets, bbox_weights, num_total_samples, cfg):
         # classification loss
-        if self.use_sigmoid_cls:
-            labels = labels.reshape(-1, self.cls_out_channels)
-            label_weights = label_weights.reshape(-1, self.cls_out_channels)
-        else:
-            labels = labels.reshape(-1)
-            label_weights = label_weights.reshape(-1)
+        labels = labels.reshape(-1)
+        label_weights = label_weights.reshape(-1)
         cls_score = cls_score.permute(0, 2, 3, 1).reshape(
             -1, self.cls_out_channels)
         if self.use_sigmoid_cls:
@@ -167,8 +165,14 @@ class AnchorHead(nn.Module):
             avg_factor=num_total_samples)
         return loss_cls, loss_reg
 
-    def loss(self, cls_scores, bbox_preds, gt_bboxes, gt_labels, img_metas,
-             cfg):
+    def loss(self,
+             cls_scores,
+             bbox_preds,
+             gt_bboxes,
+             gt_labels,
+             img_metas,
+             cfg,
+             gt_bboxes_ignore=None):
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         assert len(featmap_sizes) == len(self.anchor_generators)
 
@@ -184,6 +188,7 @@ class AnchorHead(nn.Module):
             self.target_means,
             self.target_stds,
             cfg,
+            gt_bboxes_ignore_list=gt_bboxes_ignore,
             gt_labels_list=gt_labels,
             label_channels=label_channels,
             sampling=sampling)
